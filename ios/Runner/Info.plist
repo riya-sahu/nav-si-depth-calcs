@@ -53,6 +53,7 @@
 	<key>NSMicrophoneUsageDescription</key>
     <string>Can We Use Your Microphone Please</string>
     <key>NSSpeechRecognitionUsageDescription</key>
+    <string>Can We Use Speech Recognition For Voice Commands</string>
 
 </dict>
 </plist>
