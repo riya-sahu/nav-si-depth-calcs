@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import '../../core/services/media_manager.dart';
 import '../../core/orchestrator/extension_metadata.dart';
 
+//TODO: add the depth info setting
+
 /// Detection setting enum.
 // search = actively searching (a target exists; target could be all)
 // position = include position information for detections
 // color = include color information for detections
-enum DetectionSetting {search, position, color}
+enum DetectionSetting {search, position, color, depth}
 
 /// DetectionSettings handles the user settings for a detection extension.
 abstract class DetectionSettings {
@@ -21,6 +23,7 @@ abstract class DetectionSettings {
   bool? get search => _settingToggles[DetectionSetting.search];
   bool? get position => _settingToggles[DetectionSetting.position];
   bool? get color => _settingToggles[DetectionSetting.color];
+  bool? get depth => _settingToggles[DetectionSetting.depth];
 
   DetectionSettings(this._extensionName, this._settingToggles, this._mediaManager);
 
@@ -33,7 +36,7 @@ abstract class DetectionSettings {
   /// Parameters:
   ///   transcription - the current recording to process
   Future<bool> handleSettingCommands(String transcription) async {
-    List<String> transcriptionArray = transcription.split(" ");
+    List<String> transcriptionArray = transcription.split(" "); //get all the words
     debugPrint(transcriptionArray.toString());
 
     // flag for whether settings command was activated or not
@@ -42,31 +45,31 @@ abstract class DetectionSettings {
     // check if first word is "settings"; use substring to match even with : or ,
     if (transcriptionArray[0].length < 8 || transcriptionArray[0].substring(0, 8) != "settings") {
       return settingsActivated;
-    }
+    } //if the first word is not settings, return false - you're done, no activity
 
     // once here: settings command was called
     settingsActivated = true;
 
     // check if transcription is "settings report"
     if (transcriptionArray.length < 2) {
-      await _mediaManager.speak("Failed to update settings.");
-      return settingsActivated;
+      await _mediaManager.speak("Failed to update settings."); //you didn't give enough info
+      return settingsActivated; //true
     }
     String firstWord = transcriptionArray[1];
-    if (firstWord == "report") {
-      await announceSettings();
-      return settingsActivated;
+    if (firstWord == "report") { //if "settings report": ignore all other parts, call announceSettings()
+      await announceSettings(); //the reason behind the async
+      return settingsActivated; //true
     }
 
     // check if transcription is a settings update
-    if (transcriptionArray.length < 3) {
+    if (transcriptionArray.length < 3) { //already ruled out possibility of settings report, so insufficient info
       await _mediaManager.speak("Failed to update settings.");
-      return settingsActivated;
+      return settingsActivated; //true
     }
     // determine setting to update
     DetectionSetting setting;
     try {
-      setting = DetectionSetting.values.byName(firstWord);
+      setting = DetectionSetting.values.byName(firstWord); //position, color, search, or depth
     } catch (e) {
       await _mediaManager.speak(
           "Failed to update settings. $firstWord "
@@ -85,7 +88,7 @@ abstract class DetectionSettings {
           "Failed to update settings. "
               "New setting value must be either on or off."
       );
-      return settingsActivated;
+      return settingsActivated; //true
     }
     // check if attempting to turn on search: must instead provide target, which automatically turns on search
     if (setting == DetectionSetting.search && toggle == true) {

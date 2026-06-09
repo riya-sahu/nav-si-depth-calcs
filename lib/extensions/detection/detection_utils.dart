@@ -1,4 +1,6 @@
 import 'dart:math' hide log;
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image/image.dart' as image;
@@ -143,4 +145,29 @@ String calculateColor(Uint8List frame, Map boundingBox) {
   }
 
   return closestColor;
+}
+
+Map coreBoundingBox(Map boundingBox) {
+  final cropFraction = 0.5;
+
+  // bounding box information:
+  // top = y-coordinate of top edge, left = x-coordinate of left edge,
+  // bottom = y-coordinate of bottom edge, right = x-coordinate of right edge
+  final width = (boundingBox["right"] - boundingBox["left"]).round();
+  final height = (boundingBox["bottom"] - boundingBox["top"]).round();
+
+  final startY = (boundingBox["top"] + (height * cropFraction)).round();
+  final endY = (boundingBox["bottom"] - (height * cropFraction)).round();
+  final startX = (boundingBox["left"] + (width * cropFraction)).round();
+  final endX = (boundingBox["right"] - (width * cropFraction)).round();
+
+  final newBox = {
+    'left': startX,
+    'right': endX,
+    'top': startY,
+    'bottom': endY
+  };
+
+  return newBox;
+
 }

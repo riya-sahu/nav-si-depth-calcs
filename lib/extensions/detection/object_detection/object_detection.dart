@@ -53,6 +53,8 @@ class _ObjectDetectionState extends State<ObjectDetection> {
   // object detection model
   final yolo = YOLO(modelPath: "yolo11n", task: YOLOTask.detect);
 
+  //TODO: initialize depth estimation model here
+
   StreamSubscription<void>? _frameSubscription;
   bool _isProcessing = false;
 
@@ -254,6 +256,10 @@ class _ObjectDetectionState extends State<ObjectDetection> {
 
     final List<String> targetObjects = _settings!.target!;
 
+    if (_settings!.depth!) {
+      //TODO: calculate the depth of every pixel in the image
+    }
+
     for (var result in results["detections"]) {
       // result map: {boundingBox: {top: , left: , bottom: , right: }, classIndex: , confidence: , className: ,
       // normalizedBox: {top: , left: , bottom: , right: }}
@@ -333,7 +339,8 @@ class _ObjectDetectionState extends State<ObjectDetection> {
       'top': result["boundingBox"]["top"],
       'bottom': result["boundingBox"]["bottom"],
       'left': result["boundingBox"]["left"],
-      'right': result["boundingBox"]["right"]
+      'right': result["boundingBox"]["right"],
+      'depth': 0 //TODO: ensure this is filled correctly
     };
   }
 
