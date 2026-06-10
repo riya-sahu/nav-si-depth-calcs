@@ -51,11 +51,13 @@ android {
     packaging {
         jniLibs {
             useLegacyPackaging = true
-            // pick sherpa_onnx.so
+            // ensure sherpa_onnx version is prioritized and conflicts are resolved - AI generated
+            pickFirsts.add("**/libonnxruntime.so")
+            pickFirsts.add("**/libonnxruntime_providers_shared.so")
             pickFirsts.add("**/libsherpa-onnx-c-api.so")
             pickFirsts.add("**/libsherpa-onnx-core.so")
             pickFirsts.add("**/libc++_shared.so")
-            // exclude old ONNX Runtime is any
+            // exclude old ONNX Runtime is any (exclude specific paths if necessary - AI text)
             excludes.add("**/flutter_yolo_open_kit/**/libonnxruntime.so")
             excludes.add("**/flutter_yolo_open_kit/**/libonnxruntime_providers_shared.so")
         }

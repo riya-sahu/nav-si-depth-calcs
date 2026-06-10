@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_onnxruntime/flutter_onnxruntime.dart';
 import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 import '../../../core/services/media_manager.dart';
 import '../../../core/services/camera/camera_source.dart';
@@ -53,7 +54,8 @@ class _ObjectDetectionState extends State<ObjectDetection> {
   // object detection model
   final yolo = YOLO(modelPath: "yolo11n", task: YOLOTask.detect);
 
-  //TODO: initialize depth estimation model here
+  // depth estimation model
+  OrtSession? _midasSession;
 
   StreamSubscription<void>? _frameSubscription;
   bool _isProcessing = false;
@@ -88,8 +90,12 @@ class _ObjectDetectionState extends State<ObjectDetection> {
 
       if (mounted) { setState(() {}); }
 
-      // initialize model
+      // initialize YOLO model
       await yolo.loadModel();
+
+      // initialize MiDaS interpreter - AI generated
+      final ort = OnnxRuntime();
+      _midasSession = await ort.createSessionFromAsset('assets/midas.onnx');
 
       // initialize settings
       _settings = ObjectDetectionSettings(_mediaManager!);
@@ -356,9 +362,15 @@ class _ObjectDetectionState extends State<ObjectDetection> {
     await _frameSubscription?.cancel();
     _frameSubscription = null;
 
-    // dispose model
+    // dispose YOLO model
     if (yolo.isInitialized) {
       await yolo.dispose();
+    }
+
+    // dispose of MiDaS model
+    if (_midasSession != null) {
+      await _midasSession?.close();
+      _midasSession = null; //TODO: ensure this is correct disposal, just following MediaManager for now
     }
 
     // dispose media manager
