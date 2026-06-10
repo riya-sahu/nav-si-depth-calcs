@@ -18,12 +18,18 @@ class MobileMicrophoneSource extends MicrophoneSource {
 
   @override
   Future<void> initialize() async {
-    await super.initialize();
-
+    debugPrint("Microphone: Requesting permission...");
     final permissionStatus = await Permission.microphone.request();
+    debugPrint("Microphone: Permission status is $permissionStatus");
+
     if (!permissionStatus.isGranted) {
-      throw Exception("Microphone permission denied");
+      debugPrint("Microphone: Permission denied, skipping model load.");
+      return;
     }
+
+    debugPrint("Microphone: Loading speech-to-text models...");
+    await super.initialize(); // AI-suggested switchq
+    debugPrint("Microphone: Initialization complete.");
 
     state = MicrophoneState.ready;
 
