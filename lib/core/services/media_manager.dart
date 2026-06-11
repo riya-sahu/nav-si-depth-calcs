@@ -1,3 +1,4 @@
+import 'dart:async'; // AI-generated mic fix: required for unawaited
 import 'package:flutter/material.dart';
 import '../../core/services/camera/camera_source.dart';
 import '../../core/services/camera/mobile_camera_source.dart';
@@ -108,7 +109,7 @@ class MediaManager {
   /// Start the microphone's active listening.
   Future<void> startMicrophone() async {
     await _speaker.stop();
-    await speak("On");
+    unawaited(speak("On")); // AI-generated mic fix: non-blocking feedback
     await _microphoneSource!.startListening();
   }
 

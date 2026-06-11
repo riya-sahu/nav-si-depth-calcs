@@ -42,6 +42,10 @@ class _TextDetectionState extends State<TextDetection> {
   StreamSubscription<void>? _frameSubscription;
   bool _isProcessing = false;
 
+  // AI-generated mic fix: cooldown timer to prevent audio overlapping
+  Map<String, int> _spokenLog = {}; 
+  final int _cooldownThreshold = 100; // wait ~100 frames before repeating same text
+
   @override
   void initState() {
     super.initState();
@@ -78,18 +82,28 @@ class _TextDetectionState extends State<TextDetection> {
   Future<void> _startProcessing() async {
     // return if already processing
     if (_frameSubscription != null) {
+      debugPrint("AI-generated mic fix: _startProcessing called but subscription already exists.");
       return;
     }
 
+    debugPrint("AI-generated mic fix: Starting frame stream subscription...");
+
     // create subscription to camera frames
     _frameSubscription = _mediaManager!.cameraSource!.frameStream
-        .where((_) => _settings!.search!) // currently searching
         .listen((frame) async {
+          // AI-generated mic fix: Move search check inside to log when it's blocking
+          if (!(_settings?.search ?? false)) {
+            // debugPrint("AI-generated mic fix: Search is currently DISABLED, skipping frame.");
+            return;
+          }
+
           if (_isProcessing) return; // drop frames if processing
           _isProcessing = true;
 
           try {
             await _processCameraFrame(frame);
+          } catch (e) {
+            debugPrint("AI-generated mic fix: Error in _processCameraFrame: $e");
           } finally {
             _isProcessing = false;
           }
@@ -105,10 +119,15 @@ class _TextDetectionState extends State<TextDetection> {
   /// Parameters:
   ///   frame: the camera frame to process
   Future<void> _processCameraFrame(CameraFrame frame) async {
-
     try {
       final inputImage = await _mediaManager!.cameraSource!.createInputImage(frame);
       final recognizedText = await _model.processImage(inputImage);
+      
+      if (recognizedText.blocks.isEmpty) {
+        // AI-generated mic fix: Log even if nothing is found to confirm OCR is running
+        // debugPrint("AI-generated mic fix: Frame processed, but no text found.");
+      }
+
       await _reportTextResults(recognizedText.blocks);
 
     } catch (e) {
@@ -121,26 +140,48 @@ class _TextDetectionState extends State<TextDetection> {
   /// Parameters:
   ///   blocks: the text blocks to analyze to report if target text is found
   Future<void> _reportTextResults(List<TextBlock> blocks) async {
-      for (final block in blocks) {
-        String targetText = _settings!.target;
+    // AI-generated mic fix: tick down cooldowns for everything in the log
+    _spokenLog.updateAll((key, value) => value > 0 ? value - 1 : 0);
 
-        // for all text
-        if (targetText == "") {
-          await _mediaManager!.speak(block.text);
-        }
-        // for specific text
-        else if (block.text.toLowerCase() == targetText) {
-          var textPosition = "";
-          if (_settings!.position!) {
-            textPosition = "near ${calculatePosition(
+    for (final block in blocks) {
+      String targetText = _settings!.target;
+      String detectedText = block.text.trim().toLowerCase();
+      
+      // AI-generated mic fix: print what is actually being seen for debugging
+      debugPrint("Text Detection saw: '$detectedText'");
+
+      bool isMatch = false;
+      if (targetText == "") {
+        isMatch = true; // All text mode
+      } else if (detectedText.contains(targetText.toLowerCase())) {
+        // AI-generated mic fix: Use partial matching so "name" matches "write your name"
+        isMatch = true;
+      }
+
+      if (isMatch) {
+        // Check cooldown
+        int currentCooldown = _spokenLog[detectedText] ?? 0;
+        
+        if (currentCooldown == 0) {
+          // Reset cooldown
+          _spokenLog[detectedText] = _cooldownThreshold;
+
+          if (targetText == "") {
+            await _mediaManager!.speak(block.text);
+          } else {
+            var textPosition = "";
+            if (_settings!.position!) {
+              textPosition = "near ${calculatePosition(
                   centerX: block.boundingBox.center.dx,
                   centerY: block.boundingBox.center.dy,
                   frameWidth: _mediaManager!.cameraSource!.previewWidth!,
                   frameHeight: _mediaManager!.cameraSource!.previewHeight!)}";
+            }
+            await _mediaManager!.speak('Found: $targetText $textPosition');
           }
-          await _mediaManager!.speak('Found: $targetText $textPosition');
         }
       }
+    }
   }
 
   /// Process speech to perform correct next step: switching extensions, updating
@@ -149,6 +190,11 @@ class _TextDetectionState extends State<TextDetection> {
   /// Parameters:
   ///   transcription - the transcribed result of the user's speech
   Future<void> _onListeningResult(String transcription) async {
+    // AI-generated mic fix: provide specific feedback for empty transcription
+    if (transcription.isEmpty) {
+      await _mediaManager!.speak("Empty transcription heard.");
+      return;
+    }
 
     // handle navigation
     if (transcription == "switch to object detection") {

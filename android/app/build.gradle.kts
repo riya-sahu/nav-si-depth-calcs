@@ -26,7 +26,7 @@ android {
         applicationId = "com.example.all_brawn"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = 24
+        minSdk = 26
         targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -51,30 +51,23 @@ android {
     packaging {
         jniLibs {
             useLegacyPackaging = true
-            // ensure sherpa_onnx version is prioritized and conflicts are resolved - AI generated
-            pickFirsts.add("**/libonnxruntime.so")
-            pickFirsts.add("**/libonnxruntime_providers_shared.so")
-            pickFirsts.add("**/libsherpa-onnx-c-api.so")
-            pickFirsts.add("**/libsherpa-onnx-core.so")
+            // AI-generated mic fix: prioritize sherpa_onnx libraries and resolve conflicts
             pickFirsts.add("**/libc++_shared.so")
-            // exclude old ONNX Runtime is any (exclude specific paths if necessary - AI text)
-            excludes.add("**/flutter_yolo_open_kit/**/libonnxruntime.so")
-            excludes.add("**/flutter_yolo_open_kit/**/libonnxruntime_providers_shared.so")
+            pickFirsts.add("**/libonnxruntime.so")
+            pickFirsts.add("**/libsherpa-onnx-core.so")
         }
     }
 
-    // use ONNX Runtime version compatible with sherpa_onnx 1.12.23
+    // AI-generated mic fix: Resolve potential library conflicts
     configurations.all {
         resolutionStrategy {
-            force("com.microsoft.onnxruntime:onnxruntime-android:1.23.2")
-            // prevent version conflicts
-            eachDependency {
-                if (requested.group == "com.microsoft.onnxruntime") {
-                    useVersion("1.23.2")
-                    because("Compatible with sherpa_onnx 1.12.23")
-                }
-            }
+            // Removed forced onnxruntime 1.23.2 as it may conflict with sherpa_onnx 1.12.23
         }
+
+        // AI-generated mic fix: Resolve LiteRT vs TensorFlow Lite conflict
+        exclude(group = "org.tensorflow", module = "tensorflow-lite")
+        exclude(group = "org.tensorflow", module = "tensorflow-lite-api")
+        exclude(group = "org.tensorflow", module = "tensorflow-lite-gpu")
     }
 }
 

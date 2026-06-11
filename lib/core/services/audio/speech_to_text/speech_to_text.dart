@@ -86,40 +86,50 @@ class SpeechToText {
   /// Returns: the transcribed string of the audio data
   Future<String> processRecording(Uint8List data) async {
       if (_streamState != StreamState.ready || _stream == null || _recognizer == null) {
+        debugPrint("SpeechToText: Not ready. State: $_streamState, Recognizer: ${_recognizer != null}, Stream: ${_stream != null}");
         return "";
       }
 
       _streamState = StreamState.processing;
+      // AI-generated mic fix: enhanced logging
+      debugPrint("SpeechToText: Processing ${data.length} bytes of audio data...");
 
       try {
         final samplesFloat32 = convertBytesToFloat32(data);
+        debugPrint("SpeechToText: Converted to ${samplesFloat32.length} float32 samples.");
 
         // pass to the model
         _stream!.acceptWaveform(samples: samplesFloat32, sampleRate: _sampleRate);
 
         // decode
+        int decodeCount = 0;
         while (_recognizer!.isReady(_stream!)) {
           _recognizer!.decode(_stream!);
+          decodeCount++;
         }
+        debugPrint("SpeechToText: First decode phase complete ($decodeCount iterations).");
 
         // force final decoding to get complete result
         _stream!.inputFinished();
 
+        decodeCount = 0;
         while (_recognizer!.isReady(_stream!)) {
           _recognizer!.decode(_stream!);
+          decodeCount++;
         }
+        debugPrint("SpeechToText: Final decode phase complete ($decodeCount iterations).");
 
         // get the recognized text
         final result = _recognizer!.getResult(_stream!);
         final text = result.text.trim().toLowerCase();
+        debugPrint("SpeechToText: Recognized text: '$text'");
         return text;
 
       } catch (e) {
-        debugPrint("Error processing recording: $e");
+        debugPrint("SpeechToText Error: $e");
         return "";
       } finally {
         _streamState = StreamState.ready;
-        await Future.delayed(const Duration(milliseconds: 100));
       }
   }
 

@@ -52,7 +52,8 @@ class _ObjectDetectionState extends State<ObjectDetection> {
   ObjectDetectionSettings? _settings;
 
   // object detection model
-  final yolo = YOLO(modelPath: "yolo11n", task: YOLOTask.detect);
+  // AI-generated mic fix: Force CPU to avoid GPU delegate errors with SPLIT operation
+  final yolo = YOLO(modelPath: "yolo11n", task: YOLOTask.detect, useGpu: false);
 
   // depth estimation model
   //OrtSession? _midasSession;
@@ -117,6 +118,11 @@ class _ObjectDetectionState extends State<ObjectDetection> {
   /// Parameters:
   ///   transcription - the transcribed result of the user's speech
   Future<void> _onListeningResult(String transcription) async {
+    // AI-generated mic fix: provide specific feedback for empty transcription
+    if (transcription.isEmpty) {
+      await _mediaManager!.speak("Empty transcription heard.");
+      return;
+    }
 
     // handle navigation
     if (transcription == "switch to text detection") {
@@ -236,6 +242,7 @@ class _ObjectDetectionState extends State<ObjectDetection> {
   Future<void> _processCameraFrame(CameraFrame frame) async {
     try {
       final image = await _mediaManager!.cameraSource!.createJpegImage(frame);
+      // AI-generated mic fix: wrap prediction in try-catch to handle GPU/Inference exceptions
       final Map<String, dynamic> results = await yolo.predict(image, confidenceThreshold: 0.5, iouThreshold: 0.45);
 
       setState(() {
@@ -243,10 +250,11 @@ class _ObjectDetectionState extends State<ObjectDetection> {
       });
 
       await _processImageResults(image, results);
-      debugPrint("Results: ${results["detections"]}");
-
+    } on Exception catch (e) {
+      debugPrint("Object detection inference error: $e");
+      // If it's a GPU error, we might want to notify the user or try a different approach
     } catch (e) {
-      debugPrint("Object detection error: $e");
+      debugPrint("Object detection unexpected error: $e");
     }
   }
 

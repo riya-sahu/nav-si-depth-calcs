@@ -28,7 +28,7 @@ class MobileMicrophoneSource extends MicrophoneSource {
     }
 
     debugPrint("Microphone: Loading speech-to-text models...");
-    await super.initialize(); // AI-suggested switchq
+    await super.initialize(); // AI-generated mic fix: ensure base class initialize is called
     debugPrint("Microphone: Initialization complete.");
 
     state = MicrophoneState.ready;
@@ -96,29 +96,21 @@ class MobileMicrophoneSource extends MicrophoneSource {
   Future<void> stopListening(Future<void> Function(String result) onResult) async {
     if (state != MicrophoneState.activeListening) return;
 
-    // add delay to ensure final audio is captured
-    await Future.delayed(const Duration(seconds: 1));
+    // AI-generated mic fix: reduce delay to improve responsiveness
+    await Future.delayed(const Duration(milliseconds: 500));
     debugPrint("Stopping mobile microphone listening...");
 
     state = MicrophoneState.ready;
-
     await _cleanup();
 
-    // process buffer if not empty
     if (_buffer.isNotEmpty && state != MicrophoneState.disposed) {
-      debugPrint("Processing buffer of size: ${_buffer.length}");
-
-      // copy buffer & flatten all chunks into single buffer
+      debugPrint("Processing buffer of size: ${_buffer.length} chunks");
       final bufferCopy = List<Uint8List>.from(_buffer);
-      // clear original buffer
       _buffer.clear();
-      debugPrint("Buffer cleared. Current size: ${_buffer.length}");
 
       final totalBytes = bufferCopy.fold<int>(0, (sum, chunk) => sum + chunk.length);
       if (totalBytes > 0) {
         final combinedBuffer = Uint8List(totalBytes);
-
-        // copy audio data into combined buffer
         var offset = 0;
         for (var chunk in bufferCopy) {
           combinedBuffer.setRange(offset, offset + chunk.length, chunk);
@@ -127,19 +119,20 @@ class MobileMicrophoneSource extends MicrophoneSource {
 
         // transcribe audio data
         String? result = await transcribe(combinedBuffer);
+        debugPrint("Transcription result received: '$result'");
 
-        // process transcribed result if exists
-        if (result != null && result.isNotEmpty) {
-          debugPrint("Transcription: $result");
-          await onResult(result);
-        } else {
-          debugPrint("Buffer empty -- no audio to process");
-        }
-
-        await Future.delayed(const Duration(milliseconds: 150));
-        await speechToText.resetStream();
+        // AI-generated mic fix: ALWAYS call onResult to provide feedback, even if empty
+        await onResult(result ?? "");
+      } else {
+        debugPrint("Buffer total bytes was 0");
+        await onResult("");
       }
+    } else {
+      debugPrint("Buffer was empty or source disposed.");
+      await onResult("");
     }
+    
+    await speechToText.resetStream();
   }
 
   /// Helper function to clean up the audio recorder and stream subscription.
