@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nav_si/state/router.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   // adding ProviderScope enables Riverpod for entire app
   runApp(const ProviderScope(child: MyApp()));
 }

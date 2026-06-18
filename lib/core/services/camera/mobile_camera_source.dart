@@ -25,7 +25,7 @@ class MobileCameraSource extends CameraSource {
 
   MobileCameraSource({
     this.minFrameInterval = const Duration(milliseconds: 100), // max 10 FPS
-    this.resolution = ResolutionPreset.high,
+    this.resolution = ResolutionPreset.medium,
   });
 
   @override CameraSourceType get type => CameraSourceType.mobile;

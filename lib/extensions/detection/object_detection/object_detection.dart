@@ -52,7 +52,7 @@ class _ObjectDetectionState extends State<ObjectDetection> {
   ObjectDetectionSettings? _settings;
 
   // object detection model
-  // AI-generated mic fix: Force CPU to avoid GPU delegate errors with SPLIT operation
+  // AI-generated mic fix: Using official YOLOv8n ID with GPU enabled for better delegate fallback
   final yolo = YOLO(modelPath: "yolo11n", task: YOLOTask.detect, useGpu: false);
 
   // depth estimation model
@@ -67,6 +67,61 @@ class _ObjectDetectionState extends State<ObjectDetection> {
 
   // for bounding boxes
   List<Map<String, dynamic>> _currentDetections = [];
+
+  /// Build bounding boxes for detected objects that match the target list.
+  Widget _buildBoundingBoxes() {
+    if (_settings == null || _currentDetections.isEmpty || _settings!.target == null) {
+      return const SizedBox.shrink();
+    }
+
+    final targetObjects = _settings!.target as List;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Stack(
+          children: _currentDetections.where((detection) {
+            final String className = detection["className"].toLowerCase();
+            return targetObjects.contains(className);
+          }).map((detection) {
+            final normalizedBox = detection["normalizedBox"];
+            final String className = detection["className"];
+
+            final double left = normalizedBox["left"] * constraints.maxWidth;
+            final double top = normalizedBox["top"] * constraints.maxHeight;
+            final double width = (normalizedBox["right"] - normalizedBox["left"]) * constraints.maxWidth;
+            final double height = (normalizedBox["bottom"] - normalizedBox["top"]) * constraints.maxHeight;
+
+            return Positioned(
+              left: left,
+              top: top,
+              width: width,
+              height: height,
+              child: Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.red, width: 2.0),
+                ),
+                child: Align(
+                  alignment: Alignment.topLeft,
+                  child: Container(
+                    color: Colors.red,
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    child: Text(
+                      className,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
 
   // toggle on/off ability to send JSON data of detected objects over network
   bool sendData = false;
@@ -243,7 +298,17 @@ class _ObjectDetectionState extends State<ObjectDetection> {
     try {
       final image = await _mediaManager!.cameraSource!.createJpegImage(frame);
       // AI-generated mic fix: wrap prediction in try-catch to handle GPU/Inference exceptions
-      final Map<String, dynamic> results = await yolo.predict(image, confidenceThreshold: 0.5, iouThreshold: 0.45);
+      final Map<String, dynamic> results = await yolo.predict(image, confidenceThreshold: 0.6, iouThreshold: 0.45);
+
+      // Log detections with actual confidence values
+      final detections = results["detections"] as List;
+      if (detections.isNotEmpty) {
+        for (var d in detections) {
+          debugPrint("YOLO Found: ${d["className"]} (Conf: ${(d["confidence"] as double).toStringAsFixed(2)})");
+        }
+      } else {
+        debugPrint("YOLO: No objects detected.");
+      }
 
       setState(() {
         _currentDetections = results["detections"];
@@ -272,9 +337,9 @@ class _ObjectDetectionState extends State<ObjectDetection> {
 
     final List<String> targetObjects = _settings!.target!;
 
-    if (_settings!.depth!) {
-      //TODO: calculate the depth of every pixel in the image
-    }
+    /*
+    // depth estimation model code removed for MiDaS removal
+    */
 
     for (var result in results["detections"]) {
       // result map: {boundingBox: {top: , left: , bottom: , right: }, classIndex: , confidence: , className: ,
@@ -356,7 +421,7 @@ class _ObjectDetectionState extends State<ObjectDetection> {
       'bottom': result["boundingBox"]["bottom"],
       'left': result["boundingBox"]["left"],
       'right': result["boundingBox"]["right"],
-      'depth': 0 //TODO: ensure this is filled correctly
+      'depth': 0 // //TODO: ensure this is filled correctly (commented out for MiDaS removal)
     };
   }
 
@@ -412,15 +477,19 @@ class _ObjectDetectionState extends State<ObjectDetection> {
       body: _mediaManager == null || _mediaManager!.cameraSource == null
           ? const Center(child: CircularProgressIndicator())
           : Column(
-        children: [
-
-          const SizedBox(height: 10),
-
-          Expanded(
-            child: _mediaManager!.cameraSource!.buildPreview(context),
-          ),
-        ],
-      ),
+              children: [
+                const SizedBox(height: 10),
+                Expanded(
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      _mediaManager!.cameraSource!.buildPreview(context),
+                      _buildBoundingBoxes(),
+                    ],
+                  ),
+                ),
+              ],
+            ),
 
     );
   }

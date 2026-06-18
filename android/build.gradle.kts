@@ -12,6 +12,7 @@ subprojects {
     val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
     project.layout.buildDirectory.value(newSubprojectBuildDir)
 
+/*
     // Inject namespace if missing to support older plugins with AGP 8.0+ - AI-generated MiDaS fix
     afterEvaluate { // AI-generated MiDaS fix
         if (project.hasProperty("android")) { // AI-generated MiDaS fix
@@ -33,6 +34,7 @@ subprojects {
             } // AI-generated MiDaS fix
         } // AI-generated MiDaS fix
     } // AI-generated MiDaS fix
+*/
 }
 subprojects {
     project.evaluationDependsOn(":app")
