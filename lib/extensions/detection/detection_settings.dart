@@ -8,8 +8,7 @@ import '../../core/orchestrator/extension_metadata.dart';
 // search = actively searching (a target exists; target could be all)
 // position = include position information for detections
 // color = include color information for detections
-// enum DetectionSetting {search, position, color, depth}
-enum DetectionSetting {search, position, color}
+enum DetectionSetting {search, position, color, depth, substring}
 
 /// DetectionSettings handles the user settings for a detection extension.
 abstract class DetectionSettings {
@@ -24,7 +23,8 @@ abstract class DetectionSettings {
   bool? get search => _settingToggles[DetectionSetting.search];
   bool? get position => _settingToggles[DetectionSetting.position];
   bool? get color => _settingToggles[DetectionSetting.color];
-  // bool? get depth => _settingToggles[DetectionSetting.depth];
+  bool? get depth => _settingToggles[DetectionSetting.depth];
+  bool? get substring => _settingToggles[DetectionSetting.substring];
 
   DetectionSettings(this._extensionName, this._settingToggles, this._mediaManager);
 

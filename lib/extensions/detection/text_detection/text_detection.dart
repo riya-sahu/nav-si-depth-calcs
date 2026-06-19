@@ -146,16 +146,27 @@ class _TextDetectionState extends State<TextDetection> {
     for (final block in blocks) {
       String targetText = _settings!.target;
       String detectedText = block.text.trim().toLowerCase();
-      
+
       // AI-generated mic fix: print what is actually being seen for debugging
       debugPrint("Text Detection saw: '$detectedText'");
 
       bool isMatch = false;
+
       if (targetText == "") {
         isMatch = true; // All text mode
-      } else if (detectedText.contains(targetText.toLowerCase())) {
+      } else if (detectedText.contains(targetText.toLowerCase()) && _settings!.substring!) {
         // AI-generated mic fix: Use partial matching so "name" matches "write your name"
         isMatch = true;
+      } else {
+        for (final line in block.lines) {
+          for (final element in line.elements) {
+            if (element.text.toLowerCase() == targetText.toLowerCase()) {
+              isMatch = true;
+            } else {
+              debugPrint("Element didn't match target $targetText: '${element.text}'");
+            }
+          }
+        }
       }
 
       if (isMatch) {
@@ -170,6 +181,7 @@ class _TextDetectionState extends State<TextDetection> {
             await _mediaManager!.speak(block.text);
           } else {
             var textPosition = "";
+            var superstring = _settings!.substring! ? "in $detectedText" : "";
             if (_settings!.position!) {
               textPosition = "near ${calculatePosition(
                   centerX: block.boundingBox.center.dx,
@@ -177,7 +189,7 @@ class _TextDetectionState extends State<TextDetection> {
                   frameWidth: _mediaManager!.cameraSource!.previewWidth!,
                   frameHeight: _mediaManager!.cameraSource!.previewHeight!)}";
             }
-            await _mediaManager!.speak('Found: $targetText $textPosition');
+            await _mediaManager!.speak('Found: $targetText $superstring $textPosition');
           }
         }
       }
