@@ -53,7 +53,7 @@ abstract class DetectionSettings {
 
     // check if transcription is "settings report"
     if (transcriptionArray.length < 2) {
-      await _mediaManager.speak("Failed to update settings."); //you didn't give enough info
+      await _mediaManager.speak("Failed to update settings. I heard $transcription"); //you didn't give enough info
       return settingsActivated; //true
     }
     String firstWord = transcriptionArray[1];
@@ -64,7 +64,7 @@ abstract class DetectionSettings {
 
     // check if transcription is a settings update
     if (transcriptionArray.length < 3) { //already ruled out possibility of settings report, so insufficient info
-      await _mediaManager.speak("Failed to update settings.");
+      await _mediaManager.speak("Failed to update settings. I heard $transcription");
       return settingsActivated; //true
     }
     // determine setting to update
@@ -100,7 +100,7 @@ abstract class DetectionSettings {
     // attempt to update setting
     bool settingsSuccessfullyUpdated = await updateSettings(setting, toggle);
     if (!settingsSuccessfullyUpdated) {
-      await _mediaManager.speak("Failed to update settings.");
+      await _mediaManager.speak("Your transcription was recognized, but internally failed to update settings.");
     }
     return settingsActivated;
   }
